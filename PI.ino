@@ -1,5 +1,3 @@
-///////////////CÓDIGO QUE FUNCIONOU COM THINGSPEAK and EMAILLLLLLL////////////////
-
 #include <OneWire.h>
 #include <DallasTemperature.h>
 #include <ESP8266WiFi.h>
@@ -41,78 +39,35 @@ DallasTemperature sensors(&oneWire);
 
 void setup()
 {
-  // Iniciando Serial Monitor
+  //iniciando Serial Monitor
   Serial.begin(115200);
-  // Iniciando sensor DS18B20
+
+  //iniciando sensor DS18B20
   sensors.begin();
 
+  //iniciando led da ESP8266
+  pinMode(LED_BUILTIN, OUTPUT);
+
   //conectando no WiFi
-  Serial.println("Conectando em ");
-  Serial.println(ssid);
-  WiFi.begin(ssid, pass);
-
-  while (WiFi.status() != WL_CONNECTED)
-  {
-    delay(500);
-    Serial.print(".");
-  }
-
-  Serial.println("");
-  Serial.println("WiFi conectado");
+  conexaoWifi(ssid, pass);
 }
 
 void loop()
 {
   //pegando temperatura do sensor DS18B20
-  sensors.requestTemperatures();
-  float temperatureC = sensors.getTempCByIndex(0);
-  Serial.print("Temperatura: ");
-  Serial.print(temperatureC);
-  Serial.print("ºC");
-  //  float temperatureF = sensors.getTempFByIndex(0);
-  //  Serial.print(temperatureF);
-  //  Serial.println("ºF");
+  float celsius = lerTemperatura();
 
   //conectando ao ifttt (para enviar o email)
   bool iftttConnect = client.connect("maker.ifttt.com", 80);
 
   if (iftttConnect)
   {
-    if (temperatureC < 35) //Temperatura - de 35
-    {
-      //enviar aviso de hipotermia
-      Serial.println(" --> HIPOTERMIA");
-
-      if (controle != 1)
-      {
-        //enviando email
-        email("pidevestrusis@gmail.com", "HIPOTERMIA", "Temperatura Baixa!");
-      }
-
-      controle = 1;
-    }
-    else if (temperatureC > 37) //Temperatura + de 37
-    {
-      //enviar aviso de febre
-      Serial.println(" --> FEBRE");
-
-      if (controle != 2)
-      {
-        //enviando email
-        email("pidevestrusis@gmail.com", "FEBRE", "Temperatura Alta!");
-      }
-
-      controle = 2;
-    }
-    else //temperatura entre 35 e 37
-    {
-      //não enviar aviso
-      Serial.println(" --> TEMPERATURA NORMAL");
-      controle = 0;
-    }
+    //enviando email
+    lidoEnviado(celsius);
   }
+  
   delay(500);
-  client.stop();
+  client.stop();//desconectando
 
   delay(500);
   //conectando ao thingspeak
@@ -121,8 +76,9 @@ void loop()
   if (tsConnect)
   {
     //enviando dados ao thingspeak
-    thingspeak(apiKey, temperatureC);
+    thingspeak(apiKey, celsius);
   }
+  
   delay(500);
   client.stop(); //desconectando
   Serial.println("Esperando...");
